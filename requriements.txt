@@ -1,0 +1,4 @@
+Django==1.4.1
+redis==2.7.5
+uWSGI==1.9.10
+wsgiref==0.1.2

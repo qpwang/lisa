@@ -11,13 +11,17 @@ lisa
     * URL : /profiles
     * 方法: POST
     * 参数:
+    
     {   
         token: "0a00aeb93f14470e8a3ed3762ad11349",
         username: "wqq",
         email: "wqqqqq21@gmail.com",
         source: "sina" //sina|renren|...
+    
     }
+    
     * 返回: 
+    
     {
         status: 0 // status 0为成功 其他为失败
     	data: {}
@@ -27,12 +31,14 @@ lisa
     * URL : /all
     * 方法 : POST
     * 参数:
+    
     {
     	token: "0a00aeb93f14470e8a3ed3762ad11349",
     	page: 3, //默认1
     	size: 4, //默认20
     }
     * 返回：
+    
     {
     	status: 0,
     	data: {
@@ -46,11 +52,14 @@ lisa
     * URL : /<school-id>/secrets/add
     * 方法: POST
     * 参数: 
+    
     {
     	token: "0a00aeb93f14470e8a3ed3762ad11349",
         content: "其实我...."
     }
+    
     * 返回: 
+    
     {
     	status: 0,
         data: {
@@ -63,12 +72,15 @@ lisa
     * URL : /<school-id>/secrets
     * 方法: POST
     * 参数: 
+    
     {
     	token: "0a00aeb93f14470e8a3ed3762ad11349",
         page: 3, //默认1
         size: 3  //默认20
     } 
+    
     * 返回: 
+    
     {
     	status: 0,
     	data:     	{
@@ -85,12 +97,15 @@ lisa
     * URL:  /<secret-id>/comments
     * 方法: POST
     * 参数: 
+    
     {
     	token: "0a00aeb93f14470e8a3ed3762ad11349",
         page: 1, // 默认1
         size: 2 //默认20
     } 
+    
     * 返回: 
+    
     {
     	status: 0,
     	data: {
@@ -105,12 +120,15 @@ lisa
     * URL : /<secret-id>/comments/add
     * 方法: POST
     * 参数: 
+    
     {
     	token: "0a00aeb93f14470e8a3ed3762ad11349",
         reply_to: 1726337777 // 回复的那条评论的id
         content: "楼主我不知道你是谁"
     }
+    
     * 返回: 
+    
     {
     	status: 0,
     	data: {
@@ -124,12 +142,15 @@ lisa
     * URL : /mine
     * 方法: POST 
     * 参数: 
+    
     {
     	token: "0a00aeb93f14470e8a3ed3762ad11349",
         page: 2  // 默认1
         size: 1  // 默认20
     }
+    
     * 返回: 
+    
     {
     	status: 0,
     	data: {
@@ -142,11 +163,16 @@ lisa
 + 获取新消息:
     * URL : /notice
     * 方法: POST
-    * 参数: {
+    * 参数: 
+    
+    {
     	token: "0a00aeb93f14470e8a3ed3762ad11349",
     	since: 1727338838,  //若有，则只返回该时间戳之后的消
-    	size: 3,
+    	size: 3
+    }
+    
     * 返回: 
+    
     {
     	status: 0,
     	data: {
@@ -176,6 +202,7 @@ lisa
     * 方法： GET
     * 参数： 无
     * 返回： 
+    
     {
     	status: 0,
     	data: {

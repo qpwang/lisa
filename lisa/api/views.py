@@ -9,7 +9,6 @@ def profiles(request):
     data = request.GET
 
     token = data.get('token')
-    print token
     if not token:
         return json_response_error(PARAM_REQUIRED,
                 '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'token'))

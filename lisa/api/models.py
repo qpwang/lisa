@@ -24,8 +24,9 @@ class School(models.Model):
         db_table = 'school'
         verbose_name = verbose_name_plural = '学校管理'
 
-    school_name = models.CharField(max_length=128, verbose_name='名称')
+    name = models.CharField(max_length=128, verbose_name='名称')
     pinyin = models.CharField(max_length=200, verbose_name='拼音')
+    city = models.CharField(max_length=64, null=True)
     update_time = models.DateTimeField(auto_now=True)
 
 
@@ -40,7 +41,6 @@ class User(models.Model):
     source = models.ForeignKey(ThirdPartySource, verbose_name='用户来源')
     token = models.CharField(max_length=200, verbose_name='token')
     email = models.CharField(max_length=200, verbose_name='email')
-    school = models.ForeignKey(School, verbose_name='学校')
     status = models.IntegerField(default=0, verbose_name='用户状态')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='注册时间')
     update_time = models.DateTimeField(auto_now=True)
@@ -56,8 +56,7 @@ class Secret(models.Model):
         verbose_name = verbose_name_plural = '秘密管理'
 
     content = models.CharField(max_length=200, verbose_name='秘密内容')
-    send_user = models.ForeignKey(User, verbose_name='发送人')
-    father_id = models.IntegerField(default=0, verbose_name='上级id')
+    author = models.ForeignKey(User, verbose_name='发送人')
     school = models.ForeignKey(School, verbose_name='学校')
     status = models.IntegerField(default=0, verbose_name='状态')
     create_time = models.DateTimeField(auto_now_add=True)
@@ -72,7 +71,15 @@ class Comment(models.Model):
         db_table = 'comment'
         verbose_name = verbose_name_plural = '评论管理'
 
+    content = models.CharField(max_length=200, verbose_name='评论')
+    author = models.ForeignKey(User)
     secret = models.ForeignKey(Secret, verbose_name='秘密')
+    reply_to = models.ForeignKey('self', null=True)
+    floor = models.IntegerField()
+    create_time = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return self.content
 
 
 class Notice(models.Model):
@@ -81,11 +88,9 @@ class Notice(models.Model):
         db_table = 'notice'
         verbose_name = verbose_name_plural = '通知管理'
 
-    send_user = models.IntegerField(verbose_name='发送人')
-    receive_user = models.IntegerField(verbose_name='接收人')
-    secret = models.ForeignKey(Secret, verbose_name='秘密')
+    receive_user = models.ForeignKey(User, verbose_name='接收人')
+    secret = models.ForeignKey(Comment, verbose_name='秘密')
     status = models.IntegerField(default=0, verbose_name='通知状态')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
-
 

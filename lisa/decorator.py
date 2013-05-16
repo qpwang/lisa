@@ -5,8 +5,7 @@ from lisa.util.json import json_response_error
 
 def user_auth(func):
     def _(request, *args, **kwargs):
-        print request.body
-        token = request.REQUEST.get('token')
+        token = request.POST.get('token')
         try:
             user = User.objects.get(token=token)
             request.META['user'] = user

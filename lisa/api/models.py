@@ -41,6 +41,7 @@ class User(models.Model):
     source = models.ForeignKey(ThirdPartySource, verbose_name='用户来源')
     token = models.CharField(max_length=200, verbose_name='token')
     email = models.CharField(max_length=200, verbose_name='email')
+    school = models.ForeignKey(School, verbose_name='学校')
     status = models.IntegerField(default=0, verbose_name='用户状态')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='注册时间')
     update_time = models.DateTimeField(auto_now=True)

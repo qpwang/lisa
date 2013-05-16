@@ -11,7 +11,7 @@ class ThirdPartySourceAdmin(admin.ModelAdmin):
 
 
 class SchoolAdmin(admin.ModelAdmin):
-    list_display = ('school_name', 'pinyin', 'update_time')
+    list_display = ('name', 'pinyin', 'city', 'update_time')
     list_editable = ('pinyin',)
 
 
@@ -22,7 +22,7 @@ class UserAdmin(admin.ModelAdmin):
 
 
 class SecretAdmin(admin.ModelAdmin):
-    list_display = ('send_user', 'content', 'father_id', 'school', 'status', 'create_time')
+    list_display = ('author', 'content', 'school', 'status', 'create_time')
     list_editable = ('status', )
     list_filert = ('school',)
 

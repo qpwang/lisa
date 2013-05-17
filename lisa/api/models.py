@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import requests
+from uuid import uuid4
 from django.db import models
+from django.utils import simplejson as json
 
 
 class ThirdPartySource(models.Model):
@@ -16,6 +19,25 @@ class ThirdPartySource(models.Model):
 
     def __unicode__(self):
         return self.name
+
+    @classmethod
+    def _access_token(cls,access_token, uid, source):
+        third_party_source = cls.objects.get(name=source)
+        if source == 'sina':
+            post_dict = {
+                    'access_token': access_token,
+                }
+            api = '%s?access_token%s' % (third_party_source.api, access_token)
+        elif source == 'renren':
+            post_dict = {
+                    'access_token': access_token,
+                    'v': '1.0',
+                    'format': 'json',
+                }
+        response = requests.post(api, post_dict)
+        result = json.loads(response.content)
+        if result.get('uid') == uid:
+            return third_party_source.id
 
 
 class School(models.Model):
@@ -49,6 +71,22 @@ class User(models.Model):
     def __unicode__(self):
         return self.user_name
 
+    @classmethod
+    def _get_user(cls, user_name, source_id, email):
+        user = cls.objects.filter(source_id=source_id).filter(email=email).all()
+        if not user:
+            user = User()
+            user.user_name = user_name
+            user.source_id = source_id
+            user.token = uuid4()
+            user.email = email
+            user.school_id = 1
+            user.status = 0
+            user.save()
+        else:
+            user = user[0]
+        return user
+
 
 class Secret(models.Model):
     '''秘密'''
@@ -64,6 +102,17 @@ class Secret(models.Model):
 
     def __unicode__(self):
         return self.content
+
+    @classmethod
+    def _add_secret(cls, user, school_id, content):
+        secret = cls()
+        secret.content = content
+        secret.author_id = user.id
+        secret.school_id = school_id
+        secret.status = 0
+        secret.save()
+        return secret
+
 
 
 class Comment(models.Model):
@@ -82,6 +131,17 @@ class Comment(models.Model):
     def __unicode__(self):
         return self.content
 
+    @classmethod
+    def _add_comment(cls, content, user_id, secret_id, reply_to, floor):
+        comment = cls()
+        comment.content = content
+        comment.author_id = user_id
+        comment.secret_id = secret_id
+        comment.reply_to_id = reply_to
+        comment.floor = floor
+        comment.save()
+        return comment
+
 
 class Notice(models.Model):
     '''通知'''
@@ -94,6 +154,14 @@ class Notice(models.Model):
     status = models.IntegerField(default=0, verbose_name='通知状态')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def _add_notice(cls, receive_user_id, comment):
+        notice = cls()
+        notice.receive_user_id = receive_user_id
+        notice.comment_id = comment.id
+        notice.status = 0
+        notice.save()
 
 
 class UpdateInfo(models.Model):

@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import requests
-from uuid import uuid4
 from django.utils import simplejson as json
 from lisa.util.json import json_response_ok, json_response_error
 from lisa.util.respcode import PARAM_REQUIRED, ERROR_MESSAGE, DATA_ERROR
@@ -39,10 +37,10 @@ def profiles(request):
 
     try:
         uid = int(uid)
-        source_id = _access_token(access_token, uid, source)
+        source_id = ThirdPartySource._access_token(access_token, uid, source)
         if not source_id:
             return json_response_error(DATA_ERROR, 'access_token failed')
-        user = _get_user(user_name, source_id, email)
+        user = User._get_user(user_name, source_id, email)
     except Exception, e:
         return json_response_error(DATA_ERROR,
                 '%s: %s' % (ERROR_MESSAGE[DATA_ERROR], e))
@@ -50,41 +48,6 @@ def profiles(request):
     result = {'token': user.token}
 
     return json_response_ok(result)
-
-
-def _get_user(user_name, source_id, email):
-    user = User.objects.filter(source_id=source_id).filter(email=email).all()
-    if not user:
-        user = User()
-        user.user_name = user_name
-        user.source_id = source_id
-        user.token = uuid4()
-        user.email = email
-        user.school_id = 1
-        user.status = 0
-        user.save()
-    else:
-        user = user[0]
-    return user
-
-
-def _access_token(access_token, uid, source):
-    third_party_source = ThirdPartySource.objects.get(name=source)
-    if source == 'sina':
-        post_dict = {
-                'access_token': access_token,
-            }
-        api = '%s?access_token%s' % (third_party_source.api, access_token)
-    elif source == 'renren':
-        post_dict = {
-                'access_token': access_token,
-                'v': '1.0',
-                'format': 'json',
-            }
-    response = requests.post(api, post_dict)
-    result = json.loads(response.content)
-    if result.get('uid') == uid:
-        return third_party_source.id
 
 
 @user_auth
@@ -120,7 +83,7 @@ def add_secrets(request, school_id):
     user = request.META['user']
 
     try:
-        secret = _add_secret(user, school_id, content)
+        secret = Secret._add_secret(user, school_id, content)
     except Exception, e:
         return json_response_error(DATA_ERROR, e)
 
@@ -131,15 +94,6 @@ def add_secrets(request, school_id):
 
     return json_response_ok(result)
 
-
-def _add_secret(user, school_id, content):
-    secret = Secret()
-    secret.content = content
-    secret.author_id = user.id
-    secret.school_id = school_id
-    secret.status = 0
-    secret.save()
-    return secret
 
 @user_auth
 def secrets(request, school_id):
@@ -186,10 +140,10 @@ def add_comments(request, secret_id):
             reply_to = int(reply_to)
             replied_comment = Comment.objects.get(id=reply_to)
             receive_user_id = replied_comment.author_id
-            comment = _add_comment(content, user.id, secret_id, reply_to, floor)
-            _add_notice(receive_user_id, comment)
+            comment = Comment._add_comment(content, user.id, secret_id, reply_to, floor)
+            Notice._add_notice(receive_user_id, comment)
         else:
-            comment = _add_comment(content, user.id, secret_id, reply_to, floor)
+            comment = Comment._add_comment(content, user.id, secret_id, reply_to, floor)
     except Exception, e:
         return json_response_error(DATA_ERROR, e)
 
@@ -200,25 +154,6 @@ def add_comments(request, secret_id):
             }
 
     return json_response_ok(result)
-
-
-def _add_comment(content, user_id, secret_id, reply_to, floor):
-    comment = Comment()
-    comment.content = content
-    comment.author_id = user_id
-    comment.secret_id = secret_id
-    comment.reply_to_id = reply_to
-    comment.floor = floor
-    comment.save()
-    return comment
-
-
-def _add_notice(receive_user_id, comment):
-    notice = Notice()
-    notice.receive_user_id = receive_user_id
-    notice.comment_id = comment.id
-    notice.status = 0
-    notice.save()
 
 
 @user_auth

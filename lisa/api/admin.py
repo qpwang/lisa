@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from lisa.api.models import User, ThirdPartySource, School, Secret, Notice
+from lisa.api.models import User, ThirdPartySource, School, Secret, UpdateInfo
 
 
 class ThirdPartySourceAdmin(admin.ModelAdmin):
@@ -26,8 +26,12 @@ class SecretAdmin(admin.ModelAdmin):
     list_editable = ('status', )
     list_filert = ('school',)
 
+
+class UpdateInfoAdmin(admin.ModelAdmin):
+    list_display = ('version', 'content', 'url', 'flag', 'update_time')
+
 admin.site.register(ThirdPartySource, ThirdPartySourceAdmin)
 admin.site.register(School, SchoolAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(Secret, SecretAdmin)
-
+admin.site.register(UpdateInfo, UpdateInfoAdmin)

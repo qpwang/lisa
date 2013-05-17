@@ -90,8 +90,24 @@ class Notice(models.Model):
         verbose_name = verbose_name_plural = '通知管理'
 
     receive_user = models.ForeignKey(User, verbose_name='接收人')
-    secret = models.ForeignKey(Comment, verbose_name='秘密')
+    comment = models.ForeignKey(Comment, verbose_name='秘密')
     status = models.IntegerField(default=0, verbose_name='通知状态')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
+
+class UpdateInfo(models.Model):
+    '''update'''
+    class Meta:
+        db_table = 'update_info'
+        verbose_name = verbose_name_plural = '更新信息'
+        ordering = ['-update_time']
+
+    version = models.CharField(max_length=64, verbose_name='版本号')
+    content = models.TextField(verbose_name='描述')
+    url = models.CharField(max_length=256, verbose_name='下载地址')
+    flag = models.IntegerField(verbose_name='flag')
+    update_time = models.DateTimeField(verbose_name='更新时间')
+
+    def __unicode__(self):
+        return str(self.version)

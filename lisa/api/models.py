@@ -51,6 +51,9 @@ class School(models.Model):
     city = models.CharField(max_length=64, null=True)
     update_time = models.DateTimeField(auto_now=True)
 
+    def __unicode__(self):
+        return self.name
+
 
 class User(models.Model):
     '''用户表'''

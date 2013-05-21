@@ -4,7 +4,7 @@ from lisa.util.json import json_response_ok, json_response_error
 from lisa.util.respcode import PARAM_REQUIRED, ERROR_MESSAGE, DATA_ERROR
 from lisa.decorator import user_auth
 from lisa.api.models import User, Secret, ThirdPartySource, Comment, Notice, UpdateInfo
-from util.utils import datetime_to_timestamp
+from util.utils import datetime_to_timestamp, timestamp_to_datetime
 
 
 def profiles(request):
@@ -47,20 +47,28 @@ def profiles(request):
 @user_auth
 def all_secrets(request):
     data = request.REQUEST
-    page = int(data.get('page', 1))
-    size = int(data.get('size', 20))
+    size = int(data.get('size', 50))
+    timestamp = int(data.get('time'))
+    if not timestamp:
+        return json_response_error(PARAM_REQUIRED, 'time')
+    time_type = data.get('type', 'after') 
+    if time_type not in ['before', 'after']:
+        return json_response_error(PARAM_REQUIRED, 'type')
 
-    size = min(size, 1000)
+    size = min(size, 100)
 
-    start = size * (page - 1)
-
-    secrets = Secret.objects.all()[start:start+size]
+    if time_type == 'before':
+        secrets = Secret.objects.filter(create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+    else:
+        secrets = Secret.objects.filter(create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
 
     result = {'secrets': []}
     for secret in secrets:
+        hot = Comment.objects.filter(secret_id=secret.id).count()
         result['secrets'].append({
                 'id': secret.id,
                 'content': secret.content,
+                'hot': hot,
                 'time': datetime_to_timestamp(secret.create_time),
             })
 
@@ -92,20 +100,28 @@ def add_secrets(request, school_id):
 @user_auth
 def secrets(request, school_id):
     data = request.POST
-    page = int(data.get('page', 1))
-    size = int(data.get('size', 20))
+    size = int(data.get('size', 50))
+    timestamp = int(data.get('time'))
+    if not timestamp:
+        return json_response_error(PARAM_REQUIRED, 'time')
+    time_type = data.get('type')
+    if time_type not in ['before', 'after']:
+        return json_response_error(PARAM_REQUIRED, 'type')
 
-    size = min(size, 1000)
+    size = min(size, 100)
 
-    start = size * (page - 1)
-
-    secrets = Secret.objects.filter(school_id=school_id).order_by('-id').all()[start:start+size]
+    if time_type == 'before':
+        secrets = Secret.objects.filter(create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+    else:
+        secrets = Secret.objects.filter(create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
 
     result = {'secrets': []}
     for secret in secrets:
+        hot = Comment.objects.filter(secret_id=secret.id).count()
         result['secrets'].append({
                 'id': secret.id,
                 'content': secret.content,
+                'hot': hot,
                 'time': datetime_to_timestamp(secret.create_time),
             })
 

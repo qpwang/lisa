@@ -16,7 +16,7 @@ class SchoolAdmin(admin.ModelAdmin):
 
 
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('user_name', 'source', 'school', 'email', 'status', 'create_time')
+    list_display = ('user_name', 'source', 'school', 'uid', 'status', 'create_time')
     list_editable = ('status',)
     list_filter = ('source', 'school')
 

@@ -25,22 +25,16 @@ def profiles(request):
         return json_response_error(PARAM_REQUIRED,
                 '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'username'))
 
-    email = data.get('email')
-    if not email:
-        return json_response_error(PARAM_REQUIRED,
-                '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'email'))
-
     source = data.get('source')
     if not source:
         return json_response_error(PARAM_REQUIRED,
                 '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'source'))
 
     try:
-        uid = int(uid)
         source_id = ThirdPartySource._access_token(access_token, uid, source)
         if not source_id:
             return json_response_error(DATA_ERROR, 'access_token failed')
-        user = User._get_user(user_name, source_id, email)
+        user = User._get_user(user_name, uid, source_id)
     except Exception, e:
         return json_response_error(DATA_ERROR,
                 '%s: %s' % (ERROR_MESSAGE[DATA_ERROR], e))

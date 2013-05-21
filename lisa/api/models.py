@@ -8,7 +8,7 @@ from django.utils import simplejson as json
 class ThirdPartySource(models.Model):
     '''第三方平台'''
     class Meta:
-        db_table = 'third_party_source'
+        db_table = 'lisa_third_party_source'
         verbose_name = verbose_name_plural = '第三方管理'
 
     name = models.CharField(max_length=64, verbose_name='名称')
@@ -36,14 +36,14 @@ class ThirdPartySource(models.Model):
                 }
         response = requests.post(api, post_dict)
         result = json.loads(response.content)
-        if result.get('uid') == uid:
+        if str(result.get('uid')) == uid:
             return third_party_source.id
 
 
 class School(models.Model):
     '''学校'''
     class Meta:
-        db_table = 'school'
+        db_table = 'lisa_school'
         verbose_name = verbose_name_plural = '学校管理'
 
     name = models.CharField(max_length=128, verbose_name='名称')
@@ -58,14 +58,14 @@ class School(models.Model):
 class User(models.Model):
     '''用户表'''
     class Meta:
-        db_table = 'user'
+        db_table = 'lisa_user'
         verbose_name = verbose_name_plural = '用户管理'
-        unique_together = ('email', 'source')
+        unique_together = ('uid', 'source')
 
     user_name = models.CharField(max_length=128, verbose_name='用户名')
+    uid = models.CharField(max_length=128, verbose_name='uid')
     source = models.ForeignKey(ThirdPartySource, verbose_name='用户来源')
     token = models.CharField(max_length=200, verbose_name='token')
-    email = models.CharField(max_length=200, verbose_name='email')
     school = models.ForeignKey(School, verbose_name='学校')
     status = models.IntegerField(default=0, verbose_name='用户状态')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='注册时间')
@@ -75,14 +75,14 @@ class User(models.Model):
         return self.user_name
 
     @classmethod
-    def _get_user(cls, user_name, source_id, email):
-        user = cls.objects.filter(source_id=source_id).filter(email=email).all()
+    def _get_user(cls, user_name, uid, source_id):
+        user = cls.objects.filter(source_id=source_id).filter(uid=uid).all()
         if not user:
             user = User()
             user.user_name = user_name
+            user.uid = uid
             user.source_id = source_id
             user.token = uuid4()
-            user.email = email
             user.school_id = 1
             user.status = 0
             user.save()
@@ -94,7 +94,7 @@ class User(models.Model):
 class Secret(models.Model):
     '''秘密'''
     class Meta:
-        db_table = 'secret'
+        db_table = 'lisa_secret'
         verbose_name = verbose_name_plural = '秘密管理'
 
     content = models.CharField(max_length=200, verbose_name='秘密内容')
@@ -121,7 +121,7 @@ class Secret(models.Model):
 class Comment(models.Model):
     '''评论'''
     class Meta:
-        db_table = 'comment'
+        db_table = 'lisa_comment'
         verbose_name = verbose_name_plural = '评论管理'
 
     content = models.CharField(max_length=200, verbose_name='评论')
@@ -149,7 +149,7 @@ class Comment(models.Model):
 class Notice(models.Model):
     '''通知'''
     class Meta:
-        db_table = 'notice'
+        db_table = 'lisa_notice'
         verbose_name = verbose_name_plural = '通知管理'
 
     receive_user = models.ForeignKey(User, verbose_name='接收人')
@@ -170,7 +170,7 @@ class Notice(models.Model):
 class UpdateInfo(models.Model):
     '''update'''
     class Meta:
-        db_table = 'update_info'
+        db_table = 'lisa_update_info'
         verbose_name = verbose_name_plural = '更新信息'
         ordering = ['-update_time']
 

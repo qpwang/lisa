@@ -176,7 +176,7 @@ def comments(request, secret_id):
 
     start = size * (page - 1)
 
-    comments = Comment.objects.filter(secret_id=secret_id).all()[start:start+size]
+    comments = Comment.objects.filter(secret_id=secret_id).order_by('-id').all()[start:start+size]
 
     result = {'comments': []}
 

@@ -233,30 +233,22 @@ def notice(request):
             reply_id = notice.comment_id
             comment = Comment.objects.get(id=reply_id)
             secret = Secret.objects.get(id=comment.secret_id)
+            r = {
+                    'id': notice.id,
+                    'reply_id': reply_id,
+                    'secret': {
+                        'id': secret.id,
+                        'school_id': secret.school_id,
+                        'content': secret.content,
+                        'time': datetime_to_timestamp(secret.create_time),
+                    },
+                    'reply_time': datetime_to_timestamp(comment.create_time),
+                    'reply_content': comment.content,
+                }
             if comment.reply_to_id:
                 replied_content = Comment.objects.get(id=comment.reply_to_id).content
-                result['notices'].append({
-                    'id': notice.id,
-                    'replied_content': replied_content,
-                    'secret': {
-                        'id': secret.id,
-                        'school_id': secret.school_id,
-                        'content': secret.content,
-                        'time': datetime_to_timestamp(secret.create_time),
-                    },
-                    'reply_content': comment.content,
-                })
-            else:
-                result['notices'].append({
-                    'id': notice.id,
-                    'secret': {
-                        'id': secret.id,
-                        'school_id': secret.school_id,
-                        'content': secret.content,
-                        'time': datetime_to_timestamp(secret.create_time),
-                    },
-                    'reply_content': comment.content,
-                })
+                r['replied_content'] = replied_content
+            result['notices'].append(r)
         except Exception, e:
             return json_response_error(DATA_ERROR, e)
 

@@ -1,5 +1,5 @@
 from django.conf.urls import patterns, include, url
-from lisa.api.views import all_secrets, add_secrets, secrets, add_comments, comments, profiles, mine, notice_delete, notice, update
+from lisa.api.views import all_secrets, add_secrets, secrets, add_comments, comments, profiles, mine, notice_delete, notice
 
 urlpatterns = patterns('',
         url(r'^profiles$', profiles, name='profiles'),
@@ -11,5 +11,4 @@ urlpatterns = patterns('',
         url(r'^mine$', mine, name='mine'),
         url(r'^notice$', notice, name='notice'),
         url(r'^notice/delete$', notice_delete, name='notice_delete'),
-        url(r'^update$', update, name='update'),
 )

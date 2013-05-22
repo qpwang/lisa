@@ -28,16 +28,23 @@ class ThirdPartySource(models.Model):
                     'access_token': access_token,
                 }
             api = '%s?access_token%s' % (third_party_source.api, access_token)
+            response = requests.post(api, post_dict)
+            result = json.loads(response.content)
+            if str(result.get('uid')) == uid:
+                return third_party_source.id
         elif source == 'renren':
             post_dict = {
                     'access_token': access_token,
                     'v': '1.0',
                     'format': 'json',
+                    'method': 'users.getInfo',
+                    'fields': 'uid',
                 }
-        response = requests.post(api, post_dict)
-        result = json.loads(response.content)
-        if str(result.get('uid')) == uid:
-            return third_party_source.id
+            api = third_party_source.api
+            response = requests.post(api, post_dict)
+            result = json.loads(response.content)
+            if str(result[0].get('uid')) == uid:
+                return third_party_source.id
 
 
 class School(models.Model):
@@ -166,19 +173,3 @@ class Notice(models.Model):
         notice.status = 0
         notice.save()
 
-
-class UpdateInfo(models.Model):
-    '''update'''
-    class Meta:
-        db_table = 'lisa_update_info'
-        verbose_name = verbose_name_plural = '更新信息'
-        ordering = ['-update_time']
-
-    version = models.CharField(max_length=64, verbose_name='版本号')
-    content = models.TextField(verbose_name='描述')
-    url = models.CharField(max_length=256, verbose_name='下载地址')
-    flag = models.IntegerField(verbose_name='flag')
-    update_time = models.DateTimeField(verbose_name='更新时间')
-
-    def __unicode__(self):
-        return str(self.version)

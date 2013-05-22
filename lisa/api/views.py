@@ -3,7 +3,7 @@ from django.utils import simplejson as json
 from lisa.util.json import json_response_ok, json_response_error
 from lisa.util.respcode import PARAM_REQUIRED, ERROR_MESSAGE, DATA_ERROR
 from lisa.decorator import user_auth
-from lisa.api.models import User, Secret, ThirdPartySource, Comment, Notice, UpdateInfo
+from lisa.api.models import User, Secret, ThirdPartySource, Comment, Notice
 from util.utils import datetime_to_timestamp, timestamp_to_datetime
 
 
@@ -44,7 +44,6 @@ def profiles(request):
     return json_response_ok(result)
 
 
-@user_auth
 def all_secrets(request):
     data = request.REQUEST
     size = int(data.get('size', 50))
@@ -97,7 +96,6 @@ def add_secrets(request, school_id):
     return json_response_ok(result)
 
 
-@user_auth
 def secrets(request, school_id):
     data = request.POST
     size = int(data.get('size', 50))
@@ -168,15 +166,21 @@ def add_comments(request, secret_id):
 
 @user_auth
 def comments(request, secret_id):
-    data = request.POST
-    page = int(data.get('page', 1))
-    size = int(data.get('size', 20))
+    data = request.REQUEST
+    size = int(data.get('size', 50))
+    timestamp = int(data.get('time'))
+    if not timestamp:
+        return json_response_error(PARAM_REQUIRED, 'time')
+    time_type = data.get('type', 'after') 
+    if time_type not in ['before', 'after']:
+        return json_response_error(PARAM_REQUIRED, 'type')
 
-    size = min(size, 1000)
+    size = min(size, 100)
 
-    start = size * (page - 1)
-
-    comments = Comment.objects.filter(secret_id=secret_id).order_by('-id').all()[start:start+size]
+    if time_type == 'before':
+        comments = Comment.objects.filter(secret_id=secret_id).filter(create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+    else:
+        comments = Comment.objects.filter(secret_id=secret_id).filter(create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
 
     result = {'comments': []}
 
@@ -203,17 +207,23 @@ def comments(request, secret_id):
 
 @user_auth
 def mine(request):
-    data = request.POST
-    page = int(data.get('page', 1))
-    size = int(data.get('size', 20))
+    data = request.REQUEST
+    size = int(data.get('size', 50))
+    timestamp = int(data.get('time'))
+    if not timestamp:
+        return json_response_error(PARAM_REQUIRED, 'time')
+    time_type = data.get('type', 'after') 
+    if time_type not in ['before', 'after']:
+        return json_response_error(PARAM_REQUIRED, 'type')
 
-    size = min(size, 1000)
-
-    start = size * (page - 1)
+    size = min(size, 100)
 
     user = request.META['user']
 
-    secrets = Secret.objects.filter(author_id=user.id).order_by('-id').all()[start:start+size]
+    if time_type == 'before':
+        secrets = Secret.objects.filter(author_id=user.id).filter(create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+    else:
+        secrets = Secret.objects.filter(author_id=user.id).filter(create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
 
     result = {'secrets': []}
 
@@ -230,17 +240,23 @@ def mine(request):
 
 @user_auth
 def notice(request):
-    data = request.POST
-    page = int(data.get('page', 1))
-    size = int(data.get('size', 20))
+    data = request.REQUEST
+    size = int(data.get('size', 50))
+    timestamp = int(data.get('time'))
+    if not timestamp:
+        return json_response_error(PARAM_REQUIRED, 'time')
+    time_type = data.get('type', 'after') 
+    if time_type not in ['before', 'after']:
+        return json_response_error(PARAM_REQUIRED, 'type')
 
-    size = min(size, 1000)
-
-    start = size * (page - 1)
+    size = min(size, 100)
 
     user = request.META['user']
 
-    notices = Notice.objects.filter(receive_user_id=user.id).filter(status=0).order_by('-id').all()[start:start+size]
+    if time_type == 'before':
+        notices = Notice.objects.filter(receive_user_id=user.id).filter(status=0).filter(create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+    else:
+        notices = Notice.objects.filter(receive_user_id=user.id).filter(status=0).filter(create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
 
     result = {'notices': []}
 
@@ -286,22 +302,4 @@ def notice_delete(request):
         return json_response_error(DATA_ERROR, e)
 
     return json_response_ok()
-
-
-def update(request):
-    update_info = UpdateInfo.objects.order_by('-update_time').all()
-    if update_info:
-        update_info = update_info[0]
-        result = {
-            'version': update_info.version,
-            'content': update_info.content,
-            'url': update_info.url,
-            'flag': update_info.flag,
-            'update_time': datetime_to_timestamp(update_info.update_time),
-        }
-        return json_response_ok(result)
-    else:
-        return json_response_ok()
-
-
 

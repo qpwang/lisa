@@ -44,6 +44,23 @@ def profiles(request):
     return json_response_ok(result)
 
 
+def sample(request):
+    size = 20
+    secrets = Secret.objects.order_by('-id').all()[:size]
+
+    result = {'secrets': []}
+    for secret in secrets:
+        hot = Comment.objects.filter(secret_id=secret.id).count()
+        result['secrets'].append({
+                'id': secret.id,
+                'content': secret.content,
+                'hot': hot,
+                'time': datetime_to_timestamp(secret.create_time),
+            })
+
+    return json_response_ok(result)
+
+@user_auth
 def all_secrets(request):
     data = request.REQUEST
     size = int(data.get('size', 50))
@@ -96,6 +113,7 @@ def add_secrets(request, school_id):
     return json_response_ok(result)
 
 
+@user_auth
 def secrets(request, school_id):
     data = request.POST
     size = int(data.get('size', 50))

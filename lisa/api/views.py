@@ -3,8 +3,25 @@ from django.utils import simplejson as json
 from lisa.util.json import json_response_ok, json_response_error
 from lisa.util.respcode import PARAM_REQUIRED, ERROR_MESSAGE, DATA_ERROR
 from lisa.decorator import user_auth
-from lisa.api.models import User, Secret, ThirdPartySource, Comment, Notice
+from lisa.api.models import User, Secret, ThirdPartySource, Comment, Notice, School
 from util.utils import datetime_to_timestamp, timestamp_to_datetime
+
+
+def import_school(request):
+    with open('school.json', 'r') as f:
+        for line in f.readlines():
+            x = line
+        root = json.loads(x)
+
+    for item in root:
+        school = School()
+        school.id = item['id']
+        school.name = item['name']
+        school.pinyin = item['pinyin']
+        school.py_first = item['py_first']
+        school.save()
+    return json_response_ok()
+    
 
 
 def profiles(request):

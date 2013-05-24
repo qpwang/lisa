@@ -11,20 +11,23 @@ class ThirdPartySourceAdmin(admin.ModelAdmin):
 
 
 class SchoolAdmin(admin.ModelAdmin):
-    list_display = ('name', 'pinyin', 'city', 'update_time')
+    list_display = ('id', 'name', 'pinyin', 'py_first', 'update_time')
     list_editable = ('pinyin',)
+    search_fields = ('name', )
 
 
 class UserAdmin(admin.ModelAdmin):
     list_display = ('user_name', 'source', 'school', 'uid', 'status', 'create_time')
     list_editable = ('status',)
     list_filter = ('source', 'school')
+    search_fields = ('name', )
 
 
 class SecretAdmin(admin.ModelAdmin):
     list_display = ('author', 'content', 'school', 'status', 'create_time')
     list_editable = ('status', )
-    list_filert = ('school',)
+    list_filter = ('school',)
+    search_fields = ('school', 'content', 'author')
 
 
 admin.site.register(ThirdPartySource, ThirdPartySourceAdmin)

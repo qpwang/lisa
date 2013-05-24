@@ -52,10 +52,11 @@ class School(models.Model):
     class Meta:
         db_table = 'lisa_school'
         verbose_name = verbose_name_plural = '学校管理'
+        ordering = ('id',)
 
     name = models.CharField(max_length=128, verbose_name='名称')
     pinyin = models.CharField(max_length=200, verbose_name='拼音')
-    city = models.CharField(max_length=64, null=True)
+    py_first = models.CharField(max_length=200, verbose_name='拼音')
     update_time = models.DateTimeField(auto_now=True)
 
     def __unicode__(self):
@@ -172,4 +173,5 @@ class Notice(models.Model):
         notice.comment_id = comment.id
         notice.status = 0
         notice.save()
+
 

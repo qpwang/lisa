@@ -21,7 +21,19 @@ def import_school(request):
         school.py_first = item['py_first']
         school.save()
     return json_response_ok()
-    
+
+
+def school(request):
+    schools = School.objects.all()
+    result = []
+    for school in schools:
+        result.append({
+            'id': school.id,
+            'name': school.name,
+            'pinyin': school.pinyin,
+            'py_first': school.py_first,
+            })
+    return json_response_ok(result)
 
 
 def profiles(request):

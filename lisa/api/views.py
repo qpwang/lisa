@@ -3,7 +3,7 @@ from django.utils import simplejson as json
 from lisa.util.json import json_response_ok, json_response_error
 from lisa.util.respcode import PARAM_REQUIRED, ERROR_MESSAGE, DATA_ERROR
 from lisa.decorator import user_auth
-from lisa.api.models import User, Secret, ThirdPartySource, Comment, Notice, School
+from lisa.api.models import User, Secret, ThirdPartySource, Comment, Notice, School, SchoolUserRelation
 from util.utils import datetime_to_timestamp, timestamp_to_datetime
 
 
@@ -34,6 +34,25 @@ def school(request):
             'py_first': school.py_first,
             })
     return json_response_ok(result)
+
+
+@user_auth
+def set_school(request):
+    data = request.POST
+    school_id = data.get('school_id')
+    if not school_id:
+        return json_response_error(PARAM_REQUIRED, 'school_id')
+
+    user = request.META['user']
+
+    try:
+        user.school_id = int(school_id)
+        user.save()
+    except Exception, e:
+        return json_response_error(e)
+
+    return json_response_ok()
+
 
 
 def profiles(request):
@@ -334,7 +353,6 @@ def notice(request):
     return json_response_ok(result)
 
 
-
 @user_auth
 def notice_delete(request):
     data = request.POST
@@ -350,3 +368,48 @@ def notice_delete(request):
 
     return json_response_ok()
 
+
+@user_auth
+def relation(request):
+    data = request.POST
+    school_id = data.get('school_id')
+    if not school_id:
+        return json_response_error(PARAM_REQUIRED, 'school_id')
+    action_type = data.get('type')
+    if action_type not in ['follow', 'unfollow']:
+        return json_response_error(PARAM_REQUIRED, 'type')
+
+    user = request.META['user']
+    try:
+        school_id = int(school_id)
+        if action_type == 'follow':
+            relation = SchoolUserRelation._add_relation(user.id, school_id)
+            result = {'relation_id': relation.id}
+        else:
+            relation = SchoolUserRelation._update_relation(user.id, school_id, 1)
+            result = {}
+    except Exception, e:
+        return json_response_error(DATA_ERROR, e)
+
+    return json_response_ok(result)
+
+
+@user_auth
+def school_list(request):
+
+    user = request.META['user']
+
+    school_id_list = [item.school_id for item in SchoolUserRelation.objects.filter(user_id=user.id).all()]
+
+    school_list = School.objects.filter(id__in=school_id_list).all()
+
+    result = []
+    for school in school_list:
+        result.append({
+            'id': school.id,
+            'name': school.name,
+            'pinyin': school.pinyin,
+            'py_first': school.py_first,
+            })
+
+    return json_response_ok(result)

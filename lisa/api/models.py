@@ -74,7 +74,7 @@ class User(models.Model):
     uid = models.CharField(max_length=128, verbose_name='uid')
     source = models.ForeignKey(ThirdPartySource, verbose_name='用户来源')
     token = models.CharField(max_length=200, verbose_name='token')
-    school = models.ForeignKey(School, verbose_name='学校')
+    school = models.ForeignKey(School, verbose_name='学校', blank=True, null=True)
     status = models.IntegerField(default=0, verbose_name='用户状态')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='注册时间')
     update_time = models.DateTimeField(auto_now=True)
@@ -91,7 +91,6 @@ class User(models.Model):
             user.uid = uid
             user.source_id = source_id
             user.token = uuid4()
-            user.school_id = 1
             user.status = 0
             user.save()
         else:
@@ -174,4 +173,40 @@ class Notice(models.Model):
         notice.status = 0
         notice.save()
 
+
+class SchoolUserRelation(models.Model):
+    '''学校关注列表'''
+    class Meta:
+        db_table = 'lisa_school_user_relation'
+        verbose_name = verbose_name_plural = '关注列表'
+        unique_together = ('user', 'school')
+
+
+    school = models.ForeignKey(School)
+    user = models.ForeignKey(User)
+    status = models.IntegerField(default=0)
+    create_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def _add_relation(cls, user_id, school_id):
+        relation = SchoolUserRelation.objects.filter(user_id=user_id).filter(school_id=school_id).all()
+        if relation:
+            relation = relation[0]
+            relation.status = 0
+            relation.save()
+        else:
+            relation = SchoolUserRelation()
+            relation.user_id = user_id
+            relation.school_id = school_id
+            relation.status = 0
+            relation.save()
+        return relation
+
+    @classmethod
+    def _update_relation(cls, user_id, school_id, status):
+        relation = SchoolUserRelation.objects.filter(user_id=user_id).filter(school_id=school_id).all()[0]
+        relation.status = status
+        relation.save()
+        return relation
 

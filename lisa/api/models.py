@@ -3,13 +3,14 @@ import requests
 from uuid import uuid4
 from django.db import models
 from django.utils import simplejson as json
+from lisa.api.consts import *
 
 
 class ThirdPartySource(models.Model):
     '''第三方平台'''
     class Meta:
         db_table = 'lisa_third_party_source'
-        verbose_name = verbose_name_plural = '第三方管理'
+        verbose_name = verbose_name_plural = '第三方API'
 
     name = models.CharField(max_length=64, verbose_name='名称')
     api = models.CharField(max_length=200, verbose_name='API地址')
@@ -47,16 +48,22 @@ class ThirdPartySource(models.Model):
                 return third_party_source.id
 
 
-class School(models.Model):
-    '''学校'''
+class Group(models.Model):
+    '''小组'''
     class Meta:
-        db_table = 'lisa_school'
-        verbose_name = verbose_name_plural = '学校管理'
+        db_table = 'lisa_group'
+        verbose_name = verbose_name_plural = '小组'
         ordering = ('id',)
+
+    CHOICE_GROUP_TYPE = (
+            (GROUP_CATEGORY_SCHOOL, u'学校'),
+            (GROUP_CATEGORY_TOPIC, u'话题'),
+            )
 
     name = models.CharField(max_length=128, verbose_name='名称')
     pinyin = models.CharField(max_length=200, verbose_name='拼音')
     py_first = models.CharField(max_length=200, verbose_name='拼音')
+    category = models.IntegerField(choices=CHOICE_GROUP_TYPE, verbose_name='类型')
     update_time = models.DateTimeField(auto_now=True)
 
     def __unicode__(self):
@@ -67,15 +74,20 @@ class User(models.Model):
     '''用户表'''
     class Meta:
         db_table = 'lisa_user'
-        verbose_name = verbose_name_plural = '用户管理'
+        verbose_name = verbose_name_plural = '用户'
         unique_together = ('uid', 'source')
+
+    CHOICE_USER_STATUS = (
+            (USER_STATUS_NORMAL, u'正常'),
+            (USER_STATUS_BAN, u'封号'),
+            (USER_STATUS_FORBIDDEN, u'禁言'),
+            )
 
     user_name = models.CharField(max_length=128, verbose_name='用户名')
     uid = models.CharField(max_length=128, verbose_name='uid')
     source = models.ForeignKey(ThirdPartySource, verbose_name='用户来源')
     token = models.CharField(max_length=200, verbose_name='token')
-    school = models.ForeignKey(School, verbose_name='学校', blank=True, null=True)
-    status = models.IntegerField(default=0, verbose_name='用户状态')
+    status = models.IntegerField(choices=CHOICE_USER_STATUS, verbose_name='用户状态')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='注册时间')
     update_time = models.DateTimeField(auto_now=True)
 
@@ -91,7 +103,7 @@ class User(models.Model):
             user.uid = uid
             user.source_id = source_id
             user.token = uuid4()
-            user.status = 0
+            user.status = USER_STATUS_NORMAL
             user.save()
         else:
             user = user[0]
@@ -102,24 +114,29 @@ class Secret(models.Model):
     '''秘密'''
     class Meta:
         db_table = 'lisa_secret'
-        verbose_name = verbose_name_plural = '秘密管理'
+        verbose_name = verbose_name_plural = '秘密'
+
+    CHOICE_SECRET_STATUS = (
+            (SECRET_STATUS_NORMAL, '正常'),
+            (SECRET_STATUS_FORBIDDEN, '屏蔽'),
+            )
 
     content = models.CharField(max_length=200, verbose_name='秘密内容')
     author = models.ForeignKey(User, verbose_name='发送人')
-    school = models.ForeignKey(School, verbose_name='学校')
-    status = models.IntegerField(default=0, verbose_name='状态')
+    group = models.ForeignKey(Group, verbose_name='小组')
+    status = models.IntegerField(choices=CHOICE_SECRET_STATUS, verbose_name='状态')
     create_time = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
         return self.content
 
     @classmethod
-    def _add_secret(cls, user, school_id, content):
+    def _add_secret(cls, user, group_id, content):
         secret = cls()
         secret.content = content
         secret.author_id = user.id
-        secret.school_id = school_id
-        secret.status = 0
+        secret.group_id = group_id
+        secret.status = SECRET_STATUS_NORMAL
         secret.save()
         return secret
 
@@ -129,13 +146,19 @@ class Comment(models.Model):
     '''评论'''
     class Meta:
         db_table = 'lisa_comment'
-        verbose_name = verbose_name_plural = '评论管理'
+        verbose_name = verbose_name_plural = '评论'
+
+    CHOICE_COMMENT_STATUS = (
+            (COMMENT_STATUS_NORMAL, '正常'),
+            (COMMENT_STATUS_FORBIDDEN, '屏蔽'),
+            )
 
     content = models.CharField(max_length=200, verbose_name='评论')
     author = models.ForeignKey(User)
     secret = models.ForeignKey(Secret, verbose_name='秘密')
     reply_to = models.ForeignKey('self', null=True)
     floor = models.IntegerField()
+    status = models.IntegerField(choices=CHOICE_COMMENT_STATUS, verbose_name='状态')
     create_time = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -149,6 +172,7 @@ class Comment(models.Model):
         comment.secret_id = secret_id
         comment.reply_to_id = reply_to
         comment.floor = floor
+        comment.status = COMMENT_STATUS_NORMAL
         comment.save()
         return comment
 
@@ -157,11 +181,16 @@ class Notice(models.Model):
     '''通知'''
     class Meta:
         db_table = 'lisa_notice'
-        verbose_name = verbose_name_plural = '通知管理'
+        verbose_name = verbose_name_plural = '通知'
+
+    CHOICE_NOTICE_STATUS = (
+            (NOTICE_STATUS_UNREAD, '未读'),
+            (NOTICE_STATUS_READED, '已读'),
+            )
 
     receive_user = models.ForeignKey(User, verbose_name='接收人')
     comment = models.ForeignKey(Comment, verbose_name='秘密')
-    status = models.IntegerField(default=0, verbose_name='通知状态')
+    status = models.IntegerField(choices=CHOICE_NOTICE_STATUS, verbose_name='通知状态')
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
@@ -170,43 +199,41 @@ class Notice(models.Model):
         notice = cls()
         notice.receive_user_id = receive_user_id
         notice.comment_id = comment.id
-        notice.status = 0
+        notice.status = NOTICE_STATUS_UNREAD
         notice.save()
 
 
-class SchoolUserRelation(models.Model):
-    '''学校关注列表'''
+class GroupUserRelation(models.Model):
+    '''小组关注列表'''
     class Meta:
-        db_table = 'lisa_school_user_relation'
+        db_table = 'lisa_group_user_relation'
         verbose_name = verbose_name_plural = '关注列表'
-        unique_together = ('user', 'school')
+        unique_together = ('user', 'group')
 
+    CHOICE_GROUP_USER_RELATION = (
+            (GROUP_USER_STATUS_FOLLOW, '关注'),
+            (GROUP_USER_STATUS_UNFOLLOW, '未关注'),
+            (GROUP_USER_STATUS_BAN, '拉黑'),
+            )
 
-    school = models.ForeignKey(School)
+    group = models.ForeignKey(Group)
     user = models.ForeignKey(User)
-    status = models.IntegerField(default=0)
+    status = models.IntegerField(choices=CHOICE_GROUP_USER_RELATION)
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
 
     @classmethod
-    def _add_relation(cls, user_id, school_id):
-        relation = SchoolUserRelation.objects.filter(user_id=user_id).filter(school_id=school_id).all()
+    def _update_relation(cls, user_id, group_id, status):
+        relation = GroupUserRelation.objects.filter(user_id=user_id, group_id=group_id).all()
         if relation:
             relation = relation[0]
-            relation.status = 0
+            relation.status = status
             relation.save()
         else:
-            relation = SchoolUserRelation()
+            relation = GroupUserRelation()
             relation.user_id = user_id
-            relation.school_id = school_id
-            relation.status = 0
+            relation.group_id = group_id
+            relation.status = status
             relation.save()
-        return relation
-
-    @classmethod
-    def _update_relation(cls, user_id, school_id, status):
-        relation = SchoolUserRelation.objects.filter(user_id=user_id).filter(school_id=school_id).all()[0]
-        relation.status = status
-        relation.save()
         return relation
 

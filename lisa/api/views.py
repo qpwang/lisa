@@ -3,56 +3,33 @@ from django.utils import simplejson as json
 from lisa.util.json import json_response_ok, json_response_error
 from lisa.util.respcode import PARAM_REQUIRED, ERROR_MESSAGE, DATA_ERROR
 from lisa.decorator import user_auth
-from lisa.api.models import User, Secret, ThirdPartySource, Comment, Notice, School, SchoolUserRelation
-from util.utils import datetime_to_timestamp, timestamp_to_datetime
-
-
-def import_school(request):
-    with open('school.json', 'r') as f:
-        for line in f.readlines():
-            x = line
-        root = json.loads(x)
-
-    for item in root:
-        school = School()
-        school.id = item['id']
-        school.name = item['name']
-        school.pinyin = item['pinyin']
-        school.py_first = item['py_first']
-        school.save()
-    return json_response_ok()
-
-
-def school(request):
-    schools = School.objects.all()
-    result = []
-    for school in schools:
-        result.append({
-            'id': school.id,
-            'name': school.name,
-            'pinyin': school.pinyin,
-            'py_first': school.py_first,
-            })
-    return json_response_ok(result)
+from lisa.api.models import (User, Secret, ThirdPartySource, Comment,
+                             Notice, Group, GroupUserRelation)
+from lisa.api.consts import *
+from lisa.util.utils import datetime_to_timestamp, timestamp_to_datetime
 
 
 @user_auth
-def set_school(request):
+def group(request):
     data = request.POST
-    school_id = data.get('school_id')
-    if not school_id:
-        return json_response_error(PARAM_REQUIRED, 'school_id')
-
-    user = request.META['user']
+    category = data.get('category')
+    if not category:
+        return json_response_error(PARAM_REQUIRED, 'category')
 
     try:
-        user.school_id = int(school_id)
-        user.save()
-    except Exception, e:
-        return json_response_error(e)
+        groups = Group.objects.filter(category=int(category)).all()
+    except Exception as e:
+        return json_response_error(DATA_ERROR, e)
 
-    return json_response_ok()
-
+    result = []
+    for group in groups:
+        result.append({
+            'id': group.id,
+            'name': group.name,
+            'pinyin': group.pinyin,
+            'py_first': group.py_first,
+        })
+    return json_response_ok(result)
 
 
 def profiles(request):
@@ -61,31 +38,31 @@ def profiles(request):
     access_token = data.get('access_token')
     if not access_token:
         return json_response_error(PARAM_REQUIRED,
-                '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'access_token'))
+                                   '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'access_token'))
 
     uid = data.get('uid')
-    if not uid: 
+    if not uid:
         return json_response_error(PARAM_REQUIRED,
-                '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'uid'))
+                                   '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'uid'))
 
     user_name = data.get('username')
     if not user_name:
         return json_response_error(PARAM_REQUIRED,
-                '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'username'))
+                                   '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'username'))
 
     source = data.get('source')
     if not source:
         return json_response_error(PARAM_REQUIRED,
-                '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'source'))
+                                   '%s: %s' % (ERROR_MESSAGE[PARAM_REQUIRED], 'source'))
 
     try:
         source_id = ThirdPartySource._access_token(access_token, uid, source)
         if not source_id:
             return json_response_error(DATA_ERROR, 'access_token failed')
         user = User._get_user(user_name, uid, source_id)
-    except Exception, e:
+    except Exception as e:
         return json_response_error(DATA_ERROR,
-                '%s: %s' % (ERROR_MESSAGE[DATA_ERROR], e))
+                                   '%s: %s' % (ERROR_MESSAGE[DATA_ERROR], e))
 
     result = {'token': user.token}
 
@@ -100,47 +77,106 @@ def sample(request):
     for secret in secrets:
         hot = Comment.objects.filter(secret_id=secret.id).count()
         result['secrets'].append({
-                'id': secret.id,
-                'content': secret.content,
-                'hot': hot,
-                'time': datetime_to_timestamp(secret.create_time),
-            })
+            'id': secret.id,
+            'content': secret.content,
+            'group_id': secret.group_id,
+            'hot': hot,
+            'time': datetime_to_timestamp(secret.create_time),
+        })
 
     return json_response_ok(result)
 
+
 @user_auth
 def all_secrets(request):
-    data = request.REQUEST
-    size = int(data.get('size', 50))
-    timestamp = int(data.get('time'))
+    data = request.POST
+    size = data.get('size', 50)
+    timestamp = data.get('time')
     if not timestamp:
         return json_response_error(PARAM_REQUIRED, 'time')
-    time_type = data.get('type', 'after') 
+    time_type = data.get('type', 'after')
     if time_type not in ['before', 'after']:
         return json_response_error(PARAM_REQUIRED, 'type')
 
-    size = min(size, 100)
+    try:
+        size = int(size)
+        timestamp = int(timestamp)
 
-    if time_type == 'before':
-        secrets = Secret.objects.filter(create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
-    else:
-        secrets = Secret.objects.filter(create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+        size = min(size, 100)
+
+        if time_type == 'before':
+            secrets = Secret.objects.filter(
+                create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+        else:
+            secrets = Secret.objects.filter(
+                create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+    except Exception, e:
+        return json_response_error(DATA_ERROR, e)
 
     result = {'secrets': []}
     for secret in secrets:
         hot = Comment.objects.filter(secret_id=secret.id).count()
         result['secrets'].append({
-                'id': secret.id,
-                'content': secret.content,
-                'hot': hot,
-                'time': datetime_to_timestamp(secret.create_time),
-            })
+            'id': secret.id,
+            'content': secret.content,
+            'group_id': secret.group_id,
+            'hot': hot,
+            'time': datetime_to_timestamp(secret.create_time),
+        })
 
     return json_response_ok(result)
 
 
 @user_auth
-def add_secrets(request, school_id):
+def my_secrets(request):
+    data = request.POST
+    size = data.get('size', 50)
+    timestamp = data.get('time')
+    if not timestamp:
+        return json_response_error(PARAM_REQUIRED, 'time')
+    time_type = data.get('type', 'after')
+    if time_type not in ['before', 'after']:
+        return json_response_error(PARAM_REQUIRED, 'type')
+
+    user = request.META['user']
+
+    try:
+        size = int(size)
+        timestamp = int(timestamp)
+
+        size = min(size, 100)
+
+
+        group_ids = [
+            relation.group_id for relation in GroupUserRelation.objects.filter(
+                user_id=user.id).all(
+                )]
+
+        if time_type == 'before':
+            secrets = Secret.objects.filter(create_time__lt=timestamp_to_datetime(
+                timestamp), group_id__in=group_ids).order_by('-id').all()[:size]
+        else:
+            secrets = Secret.objects.filter(create_time__gte=timestamp_to_datetime(
+                timestamp), group_id__in=group_ids).order_by('-id').all()[:size]
+    except Exception, e:
+        return json_response_error(DATA_ERROR, e)
+
+    result = {'secrets': []}
+    for secret in secrets:
+        hot = Comment.objects.filter(secret_id=secret.id).count()
+        result['secrets'].append({
+            'id': secret.id,
+            'content': secret.content,
+            'group_id': secret.group_id,
+            'hot': hot,
+            'time': datetime_to_timestamp(secret.create_time),
+        })
+
+    return json_response_ok(result)
+
+
+@user_auth
+def add_secrets(request, group_id):
     data = request.POST
     content = data.get('content')
     if not content:
@@ -149,20 +185,20 @@ def add_secrets(request, school_id):
     user = request.META['user']
 
     try:
-        secret = Secret._add_secret(user, school_id, content)
-    except Exception, e:
+        secret = Secret._add_secret(user, group_id, content)
+    except Exception as e:
         return json_response_error(DATA_ERROR, e)
 
     result = {
-            'id': secret.id,
-            'time': datetime_to_timestamp(secret.create_time),
-            }
+        'id': secret.id,
+        'time': datetime_to_timestamp(secret.create_time),
+    }
 
     return json_response_ok(result)
 
 
 @user_auth
-def secrets(request, school_id):
+def secrets(request, group_id):
     data = request.POST
     size = int(data.get('size', 50))
     timestamp = int(data.get('time'))
@@ -175,19 +211,21 @@ def secrets(request, school_id):
     size = min(size, 100)
 
     if time_type == 'before':
-        secrets = Secret.objects.filter(create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+        secrets = Secret.objects.filter(create_time__lt=timestamp_to_datetime(
+            timestamp), group_id=group_id).order_by('-id').all()[:size]
     else:
-        secrets = Secret.objects.filter(create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+        secrets = Secret.objects.filter(create_time__gte=timestamp_to_datetime(
+            timestamp), group_id=group_id).order_by('-id').all()[:size]
 
     result = {'secrets': []}
     for secret in secrets:
         hot = Comment.objects.filter(secret_id=secret.id).count()
         result['secrets'].append({
-                'id': secret.id,
-                'content': secret.content,
-                'hot': hot,
-                'time': datetime_to_timestamp(secret.create_time),
-            })
+            'id': secret.id,
+            'content': secret.content,
+            'hot': hot,
+            'time': datetime_to_timestamp(secret.create_time),
+        })
 
     return json_response_ok(result)
 
@@ -203,7 +241,10 @@ def add_comments(request, secret_id):
 
     user = request.META['user']
 
-    new_comment = Comment.objects.filter(secret_id=secret_id).order_by('-floor').all()
+    new_comment = Comment.objects.filter(
+        secret_id=secret_id).order_by(
+            '-floor').all(
+            )
     if new_comment:
         floor = new_comment[0].floor + 1
     else:
@@ -214,18 +255,30 @@ def add_comments(request, secret_id):
             reply_to = int(reply_to)
             replied_comment = Comment.objects.get(id=reply_to)
             receive_user_id = replied_comment.author_id
-            comment = Comment._add_comment(content, user.id, secret_id, reply_to, floor)
-            Notice._add_notice(receive_user_id, comment)
+            comment = Comment._add_comment(
+                content,
+                user.id,
+                secret_id,
+                reply_to,
+                floor)
         else:
-            comment = Comment._add_comment(content, user.id, secret_id, reply_to, floor)
-    except Exception, e:
+            replied_secret = Secret.objects.get(id=secret_id)
+            receive_user_id = replied_secret.author_id
+            comment = Comment._add_comment(
+                content,
+                user.id,
+                secret_id,
+                reply_to,
+                floor)
+        Notice._add_notice(receive_user_id, comment)
+    except Exception as e:
         return json_response_error(DATA_ERROR, e)
 
     result = {
-            'id': comment.id,
-            'time': datetime_to_timestamp(comment.create_time),
-            'floor': floor,
-            }
+        'id': comment.id,
+        'time': datetime_to_timestamp(comment.create_time),
+        'floor': floor,
+    }
 
     return json_response_ok(result)
 
@@ -237,16 +290,18 @@ def comments(request, secret_id):
     timestamp = int(data.get('time'))
     if not timestamp:
         return json_response_error(PARAM_REQUIRED, 'time')
-    time_type = data.get('type', 'after') 
+    time_type = data.get('type', 'after')
     if time_type not in ['before', 'after']:
         return json_response_error(PARAM_REQUIRED, 'type')
 
     size = min(size, 100)
 
     if time_type == 'before':
-        comments = Comment.objects.filter(secret_id=secret_id).filter(create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+        comments = Comment.objects.filter(secret_id=secret_id).filter(
+            create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
     else:
-        comments = Comment.objects.filter(secret_id=secret_id).filter(create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+        comments = Comment.objects.filter(secret_id=secret_id).filter(
+            create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
 
     result = {'comments': []}
 
@@ -254,19 +309,19 @@ def comments(request, secret_id):
         if comment.reply_to_id:
             replied_floor = Comment.objects.get(id=comment.reply_to_id).floor
             result['comments'].append({
-                    'id': comment.id,
-                    'content': comment.content,
-                    'time': datetime_to_timestamp(comment.create_time),
-                    'floor': comment.floor,
-                    'replied_floor': replied_floor,
-                })
+                'id': comment.id,
+                'content': comment.content,
+                'time': datetime_to_timestamp(comment.create_time),
+                'floor': comment.floor,
+                'replied_floor': replied_floor,
+            })
         else:
             result['comments'].append({
-                    'id': comment.id,
-                    'content': comment.content,
-                    'time': datetime_to_timestamp(comment.create_time),
-                    'floor': comment.floor,
-                })
+                'id': comment.id,
+                'content': comment.content,
+                'time': datetime_to_timestamp(comment.create_time),
+                'floor': comment.floor,
+            })
 
     return json_response_ok(result)
 
@@ -278,7 +333,7 @@ def mine(request):
     timestamp = int(data.get('time'))
     if not timestamp:
         return json_response_error(PARAM_REQUIRED, 'time')
-    time_type = data.get('type', 'after') 
+    time_type = data.get('type', 'after')
     if time_type not in ['before', 'after']:
         return json_response_error(PARAM_REQUIRED, 'type')
 
@@ -287,9 +342,11 @@ def mine(request):
     user = request.META['user']
 
     if time_type == 'before':
-        secrets = Secret.objects.filter(author_id=user.id).filter(create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+        secrets = Secret.objects.filter(author_id=user.id).filter(
+            create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
     else:
-        secrets = Secret.objects.filter(author_id=user.id).filter(create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+        secrets = Secret.objects.filter(author_id=user.id).filter(
+            create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
 
     result = {'secrets': []}
 
@@ -298,7 +355,7 @@ def mine(request):
             'id': secret.id,
             'time': datetime_to_timestamp(secret.create_time),
             'content': secret.content,
-            'school_id': secret.school_id,
+            'group_id': secret.group_id,
         })
 
     return json_response_ok(result)
@@ -311,7 +368,7 @@ def notice(request):
     timestamp = int(data.get('time'))
     if not timestamp:
         return json_response_error(PARAM_REQUIRED, 'time')
-    time_type = data.get('type', 'after') 
+    time_type = data.get('type', 'after')
     if time_type not in ['before', 'after']:
         return json_response_error(PARAM_REQUIRED, 'type')
 
@@ -320,9 +377,11 @@ def notice(request):
     user = request.META['user']
 
     if time_type == 'before':
-        notices = Notice.objects.filter(receive_user_id=user.id).filter(status=0).filter(create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+        notices = Notice.objects.filter(receive_user_id=user.id).filter(status=0).filter(
+            create_time__lt=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
     else:
-        notices = Notice.objects.filter(receive_user_id=user.id).filter(status=0).filter(create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
+        notices = Notice.objects.filter(receive_user_id=user.id).filter(status=0).filter(
+            create_time__gte=timestamp_to_datetime(timestamp)).order_by('-id').all()[:size]
 
     result = {'notices': []}
 
@@ -332,22 +391,23 @@ def notice(request):
             comment = Comment.objects.get(id=reply_id)
             secret = Secret.objects.get(id=comment.secret_id)
             r = {
-                    'id': notice.id,
-                    'reply_id': reply_id,
-                    'secret': {
-                        'id': secret.id,
-                        'school_id': secret.school_id,
-                        'content': secret.content,
-                        'time': datetime_to_timestamp(secret.create_time),
-                    },
-                    'reply_time': datetime_to_timestamp(comment.create_time),
-                    'reply_content': comment.content,
-                }
+                'id': notice.id,
+                'reply_id': reply_id,
+                'secret': {
+                'id': secret.id,
+                'group_id': secret.group_id,
+                'content': secret.content,
+                'time': datetime_to_timestamp(secret.create_time),
+                },
+                'reply_time': datetime_to_timestamp(comment.create_time),
+                'reply_content': comment.content,
+            }
             if comment.reply_to_id:
-                replied_content = Comment.objects.get(id=comment.reply_to_id).content
+                replied_content = Comment.objects.get(
+                    id=comment.reply_to_id).content
                 r['replied_content'] = replied_content
             result['notices'].append(r)
-        except Exception, e:
+        except Exception as e:
             return json_response_error(DATA_ERROR, e)
 
     return json_response_ok(result)
@@ -363,7 +423,7 @@ def notice_delete(request):
     try:
         id_list = json.loads(id_list)
         Notice.objects.filter(id__in=id_list).all().update(status=1)
-    except Exception, e:
+    except Exception as e:
         return json_response_error(DATA_ERROR, e)
 
     return json_response_ok()
@@ -372,44 +432,47 @@ def notice_delete(request):
 @user_auth
 def relation(request):
     data = request.POST
-    school_id = data.get('school_id')
-    if not school_id:
-        return json_response_error(PARAM_REQUIRED, 'school_id')
+    group_id = data.get('group_id')
+    if not group_id:
+        return json_response_error(PARAM_REQUIRED, 'group_id')
     action_type = data.get('type')
     if action_type not in ['follow', 'unfollow']:
         return json_response_error(PARAM_REQUIRED, 'type')
 
     user = request.META['user']
     try:
-        school_id = int(school_id)
+        group_id = int(group_id)
         if action_type == 'follow':
-            relation = SchoolUserRelation._add_relation(user.id, school_id)
+            relation = GroupUserRelation._update_relation(user.id, group_id, GROUP_USER_STATUS_FOLLOW)
             result = {'relation_id': relation.id}
         else:
-            relation = SchoolUserRelation._update_relation(user.id, school_id, 1)
+            relation = GroupUserRelation._update_relation(user.id, group_id, GROUP_USER_STATUS_UNFOLLOW)
             result = {}
-    except Exception, e:
+    except Exception as e:
         return json_response_error(DATA_ERROR, e)
 
     return json_response_ok(result)
 
 
 @user_auth
-def school_list(request):
+def group_list(request):
 
     user = request.META['user']
 
-    school_id_list = [item.school_id for item in SchoolUserRelation.objects.filter(user_id=user.id).all()]
+    group_id_list = [
+        item.group_id for item in GroupUserRelation.objects.filter(
+            user_id=user.id, status=0).all(
+            )]
 
-    school_list = School.objects.filter(id__in=school_id_list).all()
+    group_list = Group.objects.filter(id__in=group_id_list).all()
 
     result = []
-    for school in school_list:
+    for group in group_list:
         result.append({
-            'id': school.id,
-            'name': school.name,
-            'pinyin': school.pinyin,
-            'py_first': school.py_first,
-            })
+            'id': group.id,
+            'name': group.name,
+            'pinyin': group.pinyin,
+            'py_first': group.py_first,
+        })
 
     return json_response_ok(result)

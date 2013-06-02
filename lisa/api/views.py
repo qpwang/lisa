@@ -459,10 +459,10 @@ def group_list(request):
 
     user = request.META['user']
 
-    group_id_list = [
-        item.group_id for item in GroupUserRelation.objects.filter(
-            user_id=user.id, status=0).all(
-            )]
+    user_group_list = GroupUserRelation.objects.filter(user_id=user.id, status=0).all()
+
+    group_id_list = [relation.group_id for relation in user_group_list]
+    relation_time_dict = dict([(relation.group_id, relation.update_time) for relation in user_group_list])
 
     group_list = Group.objects.filter(id__in=group_id_list).all()
 
@@ -473,6 +473,7 @@ def group_list(request):
             'name': group.name,
             'pinyin': group.pinyin,
             'py_first': group.py_first,
+            'time': datetime_to_timestamp(relation_time_dict[group.id]),
         })
 
     return json_response_ok(result)
